@@ -1,10 +1,17 @@
 from django.urls import path
-from .views import UserList, UserDetail
-from graphene_django.views import GraphQLView
 from django.views.decorators.csrf import csrf_exempt
+from graphene_django.views import GraphQLView
+from . import views
 
 urlpatterns = [
-    path('users/', UserList.as_view()),
-    path('users/<int:pk>/', UserDetail.as_view()),
-    path("graphql/", csrf_exempt(GraphQLView.as_view(graphiql=True))),
+    # --- RUTAS PARA USUARIOS ---
+    path('users/', views.UserList.as_view(), name='user-list'),
+    path('users/<int:pk>/', views.UserDetail.as_view(), name='user-detail'),
+
+    # --- RUTAS PARA EMPLEADOS (Las tuyas) ---
+    path('empleado/', views.EmpleadoList.as_view(), name='empleado-list'),
+    path('empleado/<int:pk>/', views.EmpleadoDetail.as_view(), name='empleado-detail'),
+
+    # --- RUTA GRAPHQL (La que ya tenías) ---
+    path('graphql/', csrf_exempt(GraphQLView.as_view(graphiql=True))),
 ]
