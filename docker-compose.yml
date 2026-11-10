@@ -1,0 +1,62 @@
+# Desarrollo:  docker compose up --build
+#   Frontend (React + Apollo) -> http://localhost:5173
+#   API REST                  -> http://localhost:3001/api/users/
+#   GraphQL (GraphiQL)        -> http://localhost:3001/api/graphql/
+# El frontend llama a http://127.0.0.1:3001, por eso el servicio publica ese puerto.
+# Panel de administración: docker compose exec users_service python manage.py createsuperuser
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: users-db
+    environment:
+      POSTGRES_DB: users_microservice
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d users_microservice"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  users_service:
+    build: ./users_services
+    container_name: users-service
+    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:3001"
+    ports:
+      - "3001:3001"
+    environment:
+      DEBUG: ${DEBUG:-True}
+      SECRET_KEY: ${SECRET_KEY:-solo-para-desarrollo-cambiala}
+      DB_NAME: users_microservice
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_HOST: db
+      DB_PORT: "5432"
+    volumes:
+      - ./users_services:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./users-frontend
+      dockerfile: Dockerfile.dev
+    container_name: users-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./users-frontend:/app
+      - /app/node_modules
+    depends_on:
+      - users_service
+    restart: unless-stopped
+
+volumes:
+  db_data:
